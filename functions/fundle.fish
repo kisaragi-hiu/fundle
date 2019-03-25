@@ -180,6 +180,15 @@ function __fundle_install_plugin -d "install the given plugin" -a plugin -a git_
 		command git clone -q $remote_url $plugin_dir
 		__fundle_checkout_revision $plugin $git_url
 	end
+
+	# register dependencies from fishfile
+	if test -f $plugin_dir/fishfile
+		for pkg in (__fundle_format_fishfile <$plugin_dir/fishfile | __fundle_parse_fishfile -R)
+			__fundle_plugin $pkg
+		end
+		# then install them
+		__fundle_install
+	end
 end
 
 function __fundle_update -d "update the given plugin, or all if unspecified" -a plugin
