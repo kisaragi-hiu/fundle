@@ -408,6 +408,36 @@ function __fundle_list -d "list registered plugins"
 	end
 end
 
+# from fisher:
+# https://github.com/jorgebucaran/fisher/blob/0b1f2703/fisher.fish#L117
+function __fundle_format_fishfile -d "normalize fishfile format"
+    command sed "s|^[[:space:]]*||;s|^$fisher_config/||;s|^~|$HOME|;s|^\.\/*|$PWD/|;s|^github\.com/||;s|^https*:/*||;s|/*\$||"
+end
+
+# from fisher:
+# https://github.com/jorgebucaran/fisher/blob/0b1f2703/fisher.fish#L238
+function __fundle_parse_fishfile -d "parse fishfile into list of plugin names" -a mode cmd
+    set -e argv[1..2]
+    command awk -v FS="[[:space:]]*#+" -v MODE="$mode" -v CMD="$cmd" -v ARGSTR="$argv" '
+        BEGIN {
+            for (n = split(ARGSTR, a, " "); i++ < n;) pkgs[getkey(a[i])] = a[i]
+        }
+        !NF { next } { k = getkey($1) }
+        MODE == "-R" && !(k in pkgs) && $0 = $1
+        MODE == "-W" && (/^#/ || k in pkgs || CMD != "rm") { print pkgs[k] (sub($1, "") ? $0 : "") }
+        MODE == "-W" || CMD == "rm" { delete pkgs[k] }
+        END {
+            for (k in pkgs) {
+                if (CMD != "rm" || MODE == "-W") print pkgs[k]
+                else print "__fundle_parse_fishfile: cannot remove \""k"\" -- package is not in fishfile" > "/dev/stderr"
+            }
+        }
+        function getkey(s,  a) {
+            return (split(s, a, /@+|:/) > 2) ? a[2]"/"a[1]"/"a[3] : a[1]
+        }
+    '
+end
+
 function fundle -d "run fundle"
 	if __fundle_no_git
 		return 1
